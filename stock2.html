@@ -1,0 +1,652 @@
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Stock Search</title>
+    <style type="text/css">
+        body{
+            background-color: rgb(42, 90, 120) !important;
+        }
+    </style>
+	<link rel="stylesheet" type="text/css" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+<!--
+	<link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="css/bootstrap-theme.css">
+-->
+	<script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+  	<script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+    
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+
+	<script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>
+	<link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.12.0/moment.min.js"></script>
+	<script src="https://code.highcharts.com/stock/highstock.js"></script>
+	<script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+<!--
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/bootstrap.js"></script>
+-->
+	<script type="text/javascript">
+		function quote(sym){
+			document.getElementById("symbol").value = sym;
+			document.getElementById("submitForm").value = "Search";
+			// document.getElementById("searchForm").submit();
+			document.searchForm.submit();
+		}
+		// clear() is a built-in function, avoid giving 
+		// the same name.
+		function clearPage(){
+			document.getElementById("stock_name").value = '';
+			var lookupTable = document.getElementById("tb");
+			var quoteTable = document.getElementById("quoteTB");
+			var noQuote = document.getElementById("noQuote");
+			if(lookupTable){
+				lookupTable.parentNode.removeChild(lookupTable);
+			}
+			if(quoteTable){
+				quoteTable.parentNode.removeChild(quoteTable);
+			}
+			if(noQuote){
+				noQuote.parentNode.removeChild(noQuote);
+			}
+		}
+		function createTable(jsonData){
+			var upMarkerURL = "http://cs-server.usc.edu:45678/hw/hw8/images/up.png";
+			var downMarkerURL = "http://cs-server.usc.edu:45678/hw/hw8/images/down.png";
+			// var jsonData = $.parseJSON(content);
+			// $("#current_stock").html(data);
+			$("#stock_table tr").remove();
+			$("#stock_table").append("<tr><td>Name</td><td id='table-name'>" + jsonData.Name + "</td></tr>");
+
+			$("#stock_table").append("<tr><td>Symbol</td><td id='table-symbol'>" + jsonData.Symbol + "</td></tr>");
+
+			var roundedPrice = jsonData.LastPrice.toFixed(2);
+			$("#stock_table").append("<tr><td>Last Price</td><td id='table-price'>$ " + roundedPrice + "</td></tr>");
+
+			var roundedChange = jsonData.Change.toFixed(2);
+			var roundedPercent = jsonData.ChangePercent.toFixed(2);
+			var changeContent = roundedChange + '(' + roundedPercent + '%)';
+			if (roundedPercent < 0) {
+				changeContent += "<img src='" + downMarkerURL + "'>";
+                $("#stock_table").append("<tr><td>Change (Change Percent)</td><td id='table-change-p'><font color='red'>" + changeContent + "</font></td></tr>");
+			}
+			else if(roundedPercent > 0){
+				changeContent += "<img src='" + upMarkerURL + "'>";
+                $("#stock_table").append("<tr><td>Change (Change Percent)</td><td id='table-change-p'><font color='green'>" + changeContent + "</font></td></tr>");
+			}
+            else{
+                $("#stock_table").append("<tr><td>Change (Change Percent)</td><td id='table-change-p'>" + changeContent + "</td></tr>");
+            }
+            
+//            console.log(moment(jsonData.Timestamp).format("D MMMM YYYY, HH:mm:ss A"));
+            var t = moment(jsonData.Timestamp).format("DD MMMM YYYY, HH:mm:ss A")
+			$("#stock_table").append("<tr><td>Time and Date</td><td>" + t + "</td></tr>");
+            
+            var roundedMarketCap;
+            if(jsonData.MarketCap >= 1000000000){
+                var roundedMarketCap = (jsonData.MarketCap / 1000000000).toFixed(2) + ' Billion';
+            }
+            else if(jsonData.MarketCap >= 1000000){
+                var roundedMarketCap = (jsonData.MarketCap / 1000000).toFixed(2) + ' Million';
+            }
+            else{
+                var roundedMarketCap = jsonData.MarketCap;
+            }
+			$("#stock_table").append("<tr><td>Market Cap</td><td id='table-market-cap'>" + roundedMarketCap + "</td></tr>");
+            
+			$("#stock_table").append("<tr><td>Volume</td><td>" + jsonData.Volume + "</td></tr>");
+            
+            var roundedYTD = jsonData.ChangeYTD.toFixed(2);
+            var roundedPercentYTD = jsonData.ChangePercentYTD.toFixed(2);
+            var YTDContent = roundedYTD + '(' + roundedPercentYTD + '%)';
+            if(roundedPercentYTD < 0){
+                YTDContent += "<img src='" + downMarkerURL + "'>";
+                $("#stock_table").append("<tr><td>Change YTD (Change Percent YTD)</td><td><font color='red'>" + YTDContent + "</font></td></tr>");
+            }
+            else if(roundedPercentYTD > 0){
+                YTDContent += "<img src='" + upMarkerURL + "'>";
+                $("#stock_table").append("<tr><td>Change YTD (Change Percent YTD)</td><td><font color='green'>" + YTDContent + "</font></td></tr>");
+            }
+            else{
+                $("#stock_table").append("<tr><td>Change YTD (Change Percent YTD)</td><td>" + YTDContent + "</td></tr>");
+            }
+//            console.log("YTDContent in Stock table: " + YTDContent);
+            
+			$("#stock_table").append("<tr><td>High Price</td><td>$" + jsonData.High.toFixed(2) + "</td></tr>");
+			$("#stock_table").append("<tr><td>Low Price</td><td>$" + jsonData.Low.toFixed(2) + "</td></tr>");
+			$("#stock_table").append("<tr><td>Opening Price</td><td>$" + jsonData.Open.toFixed(2) + "</td></tr>");
+		}
+
+		var fixDate = function(dateIn) {
+    		var dat = new Date(dateIn);
+   	 		return Date.UTC(dat.getFullYear(), dat.getMonth(), dat.getDate());
+		}
+
+		var getOHLC = function(json) {
+		    var dates = json.Dates || [];
+		    var elements = json.Elements || [];
+		    var chartSeries = [];
+
+		    if (elements[0]){
+
+		        for (var i = 0, datLen = dates.length; i < datLen; i++) {
+		            var dat = fixDate( dates[i] );
+		            var pointData = [
+		                dat,
+		                elements[0].DataSeries['open'].values[i],
+		                elements[0].DataSeries['high'].values[i],
+		                elements[0].DataSeries['low'].values[i],
+		                elements[0].DataSeries['close'].values[i]
+		            ];
+		            chartSeries.push( pointData );
+		        };
+		    }
+		    return chartSeries;
+		}
+//		var updateFavList = function(){
+//			$("#fav_table tr").slice(1).remove();
+//            for (var i = 0; i < window.localStorage.length; i++) {
+//                var symbol = window.localStorage.key(i);
+//                refresh(symbol, true);
+//            }
+//            
+//			console.log("updateFavList success");
+//		}
+		var removeOneStock = function(stock_symbol){
+			window.localStorage.removeItem(stock_symbol);
+			$('#'+stock_symbol).remove();
+            console.log(stock_symbol + " is removed");
+		}
+	</script>
+	<script>
+		$(function(){
+            $("#hightab").on('shown.bs.tab', function(e){
+                $("#history").highcharts().reflow();
+            });
+            var toggleId;
+            $("#share").click(function(){    
+                FB.ui({
+                    method : 'feed',
+                    link : 'http://dev.markitondemand.com/',
+                    picture : 'http://chart.finance.yahoo.com/t?s=' + $("#table-symbol").html() + '&lang=en-US&width=200&height=200',
+                    description: 'Stock Information of ' + $("#table-name").html() + " (" + $("#table-symbol").html() + ")",
+                    name : 'Current Stock of ' + $("#table-name").html() + " is " + $("#table-price").html(),
+                    caption: 'LAST TRADED PRICE: ' + $("#table-price").html() + ", CHANGE: " + $("#table-change-p").text(),
+                }, function(response){
+                    if(response && !response.error_message){
+                        alert('Posted Successfully');
+                    }
+                    else{
+                        alert('Not Posted');
+                    }
+                });
+            });
+            function updateFavList(){
+                $("#fav_table tr").slice(1).remove();
+                for (var i = 0; i < window.localStorage.length; i++) {
+                    var symbol = window.localStorage.key(i);
+                    refresh(symbol, true);
+                }
+
+                console.log("updateFavList success");
+            };
+			function refresh(symbol, isConstructing){
+    			var upMarkerURL = "http://cs-server.usc.edu:45678/hw/hw8/images/up.png";
+                var downMarkerURL = "http://cs-server.usc.edu:45678/hw/hw8/images/down.png";
+				$.ajax({
+					url: "quote.php",
+					dataType: "json",
+					type: "GET",
+					data: {
+						"symbol": symbol
+					},
+					success: function(data){
+						var json = data;
+                        
+                        // construct one row
+						var row = "<tr id='" + symbol + "'>";
+						row += "<td><a href=''>" + symbol + "</a></td>";
+						row += "<td>" + json.Name + "</td>";
+                        
+                        var roundedPrice = json.LastPrice.toFixed(2);
+						row += "<td>$ " + roundedPrice + "</td>";
+                        
+                        var roundedChange = json.Change.toFixed(2);
+                        var roundedPercent = json.ChangePercent.toFixed(2);
+                        var changeContent = roundedChange + '(' + roundedPercent + '%)';
+                        if (roundedChange < 0) {
+                            changeContent += "<img src='" + downMarkerURL + "'>";
+                            row += "<td><font color='red'>" + changeContent + "</font></td>";
+                        }
+                        else if(roundedChange > 0){
+                            changeContent += "<img src='" + upMarkerURL + "'>";
+                            row += "<td><font color='red'>" + changeContent + "</font></td>";
+                        }
+                        else{
+                            row += "<td>" + changeContent + "</td>";
+                        }
+                        
+                        var roundedMarketCap;
+                        if(json.MarketCap >= 1000000000){
+                            var roundedMarketCap = (json.MarketCap / 1000000000).toFixed(2) + ' Billion';
+                        }
+                        else if(json.MarketCap >= 1000000){
+                            var roundedMarketCap = (json.MarketCap / 1000000).toFixed(2) + ' Million';
+                        }
+                        else{
+                            var roundedMarketCap = json.MarketCap;
+                        }
+						row += "<td>" + roundedMarketCap + "</td>";
+                        
+						row += "<td><button role='button' class='btn btn-default'><span class='glyphicon glyphicon-trash'></span></button></td>";
+						row += "</tr>";
+                        
+                        if(isConstructing == true){
+                            window.localStorage.setItem(symbol, symbol);
+                            $("#fav_table").append(row);
+                            console.log("refresh construct : " + symbol);
+                        }
+                        else{
+                            $('#' + symbol + " td")[2].innerHTML = roundedPrice;
+                            $('#' + symbol + " td")[3].innerHTML = changeContent;
+                            console.log("refresh update : " + symbol);
+                        }
+					},
+					error: function(){
+						console.log("refresh error" + symbol);
+					}
+				});
+			}
+			$("#fav_table").on("click", "button", function(){
+				var rowId = $(this).closest('tr').attr('id');
+				removeOneStock(rowId);
+				$("#star-icon").removeClass("glyphicon-star");
+				$("#star-icon").addClass("glyphicon-star-empty");
+				$("#star-icon").attr('style', 'color: black');
+			});
+            $("#fav_table").on("click", "a", function(event){
+                event.preventDefault();
+                var rowId = $(this).closest('tr').attr('id');
+                $("#stock_name").val(rowId);
+                $("#quote-btn").trigger('click');
+            });
+			$("#refresh").click(function(){
+				for (var i = 0; i < window.localStorage.length; i++) {
+					var symbol = window.localStorage.key(i);
+					refresh(symbol, false);
+				}
+			});
+            $("#autorefresh").change(function(){
+                if(this.checked){
+                    toggleId = window.setInterval(function(){
+                        $("#refresh").trigger('click');
+                    }, 5000);
+                    console.log("auto refresh on");
+                }
+                else{
+                    clearInterval(toggleId);
+                    console.log("auto refresh off");
+                }
+            });
+			$("document").ready(function(){
+				$("#slide-right").prop("disabled", true);
+				updateFavList();
+			});
+			$("#star").click(function(){
+				if (window.localStorage.getItem($("#table-symbol").html()) == null) {//not exist
+					window.localStorage.setItem($("#table-symbol").html(), $("#table-symbol").html());
+					console.log("construct fav item : " + window.localStorage.getItem($("#table-symbol").html()));
+                    refresh($("#table-symbol").html(), true);
+                    
+					$("#star-icon").removeClass("glyphicon-star-empty");
+					$("#star-icon").addClass("glyphicon-star");
+					$("#star-icon").attr('style', 'color: gold');
+				}
+				else{
+					removeOneStock($("#table-symbol").html());
+					$("#star-icon").removeClass("glyphicon-star");
+					$("#star-icon").addClass("glyphicon-star-empty");
+					$("#star-icon").attr('style', 'color: black');
+				}
+			});
+			$("#stock_name").autocomplete({
+				source: function(request, response){
+					$.ajax({
+						url: "quote.php",
+						dataType: "json",
+						data: {
+							input: request.term
+						},
+						type: 'GET',
+						success: function(data){
+							response($.map( data, function( item ) {
+								return {
+									label: item.Symbol + " - " + item.Name + " ( " + item.Exchange + " ) ",
+									value: item.Symbol
+								}
+							}));
+						},
+						error: function(){
+							alert("Error");
+						}
+
+					});
+				},
+				select: function( event, ui ){
+					$("#stock_name").val(ui.item.value);
+					return false;
+				},
+			});
+			$('#quote-btn').click(function(event){
+				console.log("requesting " + $("#stock_name").val());
+				if (window.localStorage.getItem($("#stock_name").val().toUpperCase()) != null) {
+					$("#star-icon").removeClass("glyphicon-star-empty");
+					$("#star-icon").addClass("glyphicon-star");
+					$("#star-icon").attr('style', 'color: gold');
+					console.log("Stock already in Fav");
+				}
+				else{
+					$("#star-icon").removeClass("glyphicon-star");
+					$("#star-icon").addClass("glyphicon-star-empty");
+					$("#star-icon").attr('style', 'color: black');
+				}
+				if ($("form")[0].checkValidity()) {
+					// puting preventDefault() before checkValidity would cause the popup hint to fail
+					event.preventDefault();
+					$.ajax({
+						url: "quote.php",
+						dataType: "json",
+						type: "GET",
+						data: {
+							symbol: $("#stock_name").val()
+						},
+						success: function(data){
+							if (!('Status' in data) || data.Status != 'SUCCESS') {
+								$("#popup").html("Selet a valid entry");
+								return;
+							}
+							else{
+								$("#popup").html("");
+							}
+							$("#testCarousel").carousel(1);
+							$("#slide-right").prop("disabled", false);
+
+							createTable(data);
+							$("#daily_chart").attr("src", "http://chart.finance.yahoo.com/t?s=" + $("#stock_name").val() + "&lang=en-US&width=500&height=400");
+						},
+					});
+					var chartsData = {
+							parameters : JSON.stringify({
+							"Normalized": false,
+							"NumberOfDays": 1095,
+							"DataPeriod": "Day",
+							"Elements": [{
+								"Symbol": $("#stock_name").val(),
+								"Type": "price",
+								"Params": ["ohlc"]
+							}]
+						})
+					}
+					
+				    $.getJSON('quote.php', chartsData, function (data) {
+				    	var ohlc = getOHLC(data);
+				        // Create the chart
+				        $('#history').highcharts('StockChart', {
+				            rangeSelector : {
+                                buttons : [{
+                                    type : 'week', 
+                                    count : 1,
+                                    text : '1w'
+                                },
+                                {   
+                                    type : 'month',
+                                    count : 1,
+                                    text : '1m'
+                                },
+                                {   
+                                    type : 'month',
+                                    count : 3,
+                                    text : '3m'
+                                },
+                                {   
+                                    type : 'month',
+                                    count : 6,
+                                    text : '6m'
+                                },
+                                           {   
+                                    type : 'ytd',
+                                    count : 1,
+                                    text : 'YTD'
+                                },
+                                           {
+                                    type : 'year',
+                                    count : 1,
+                                    text : '1y'
+                                },
+                                {
+                                    type : 'all',
+                                    count : 1,
+                                    text : 'ALL'
+                                }],
+                                selected : 0
+
+				            },
+
+				            title : {
+				                text : $("#stock_name").val().toUpperCase() + ' Stock Price'
+				            },
+
+				            series : [{
+				                name : $("#stock_name").val().toUpperCase() + ' Stock Price',
+				                data : ohlc,
+				                type : 'area',
+				                threshold : null,
+				                tooltip : {
+				                    valueDecimals : 2
+				                },
+				                fillColor : {
+				                    linearGradient : {
+				                        x1: 0,
+				                        y1: 0,
+				                        x2: 0,
+				                        y2: 1
+				                    },
+				                    stops : [
+				                        [0, Highcharts.getOptions().colors[0]],
+				                        [1, Highcharts.Color(Highcharts.getOptions().colors[0]).setOpacity(0).get('rgba')]
+				                    ]
+				                }
+				            }]
+				        });
+				    });
+
+				    var news_request = {
+				    	q : $("#stock_name").val(),
+				    }
+                    $("#news_list").empty();
+                    $.getJSON('quote.php', news_request, function(data){
+                        console.log("get news for " + $("#stock_name").val());
+                        var resultList = data.d.results;
+                        for (var i = 0; i < resultList.length; i++){
+                            news_well = "<div class='well well-lg'>";
+                            news_well += "<a target='_blank' href='" + resultList[i].Url + "'>" + resultList[i].Title + "</a>";
+                            news_well += "<br><br>";
+                            
+                            news_well += "<p>" + resultList[i].Description + "</p>";
+                            
+                            var t = moment(resultList[i].Date).format("DD MMM YYYY HH:mm:ss")
+                            news_well += "<p><b>Publisher: " + resultList[i].Source + "</b></p>";
+                            news_well += "<p><b>Date: " + t + "</p></b>";
+                            news_well += "</div>";
+                            $("#news_list").append(news_well);
+                        }
+				    });
+				}
+				else{
+					console.log("invalid form");
+				}
+
+			});
+		});
+
+
+	</script>
+</head>
+<body>
+	<script>
+	  window.fbAsyncInit = function() {
+	    FB.init({
+	      appId      : '923845204400266',
+	      xfbml      : true,
+	      version    : 'v2.7'
+	    });
+	  };
+
+	  (function(d, s, id){
+	     var js, fjs = d.getElementsByTagName(s)[0];
+	     if (d.getElementById(id)) {return;}
+	     js = d.createElement(s); js.id = id;
+	     js.src = "//connect.facebook.net/en_US/sdk.js";
+	     fjs.parentNode.insertBefore(js, fjs);
+	   }(document, 'script', 'facebook-jssdk'));
+	</script>
+    
+	<div id="wrapper" class="container">
+		<div class="panel panel-default">
+            <div class="panel-body">
+                <h4 style="text-align: center;">Stock Market Search</h4>
+
+                <form class="form-inline" id="search_form">
+                    <div class="form-group">
+                        <label>Enter the stock name or symbol:<font color="red">*</font></label>
+                        <input type="text" class="form-control" name="stock_name" size="70" id="stock_name" value="" placeholder="Apple Inc. or AAPL" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="quote-btn"><span class="glyphicon glyphicon-search"></span>Get Quote</button>
+                    <button type="button" class="btn btn-default" onclick="clearPage()"><span class="glyphicon glyphicon-refresh"></span>Clear</button>
+                </form>
+                <span id="popup" style="color: red"></span>
+                <div align="right">
+                Powered by
+                    <a href="http://www.markit.com/product/markit-on-demand" target="_blank"><img src="http://cs-server.usc.edu:45678/hw/hw8/images/mod-logo.png"></a>
+                </div>
+            </div>
+		
+		</div>
+        <hr>
+		<div id="testCarousel" class="carousel slide" data-ride="carousel" data-interval="false">
+			<div class="carousel-inner" role="listbox">
+
+				<div class="item active">
+					<div id="fav">
+						<div class="panel panel-default">
+							<div class="panel-heading">
+                                <div class="row">
+                                    <h4 class="col-sm-8">Favorite List</h4>
+                                    <div class="col-sm-4" align="right">
+                                        <span class="hidden-xs not-visible">Automatic Refresh:</span>
+                                        <span title="Set automatic refresh" data-toggle="tooltip">
+                                            <input type="checkbox" data-toggle="toggle" id="autorefresh">
+                                        </span>
+                                        <button id="refresh" class="btn btn-default" role="button" title="Refresh list" style="margin-right: 5px;" data-toggle="tooltip">
+                                            <span class="glyphicon glyphicon-refresh"></span>
+                                        </button>
+                                        <button id="slide-right" class="right btn btn-default" href="#testCarousel" role="button" data-slide="next" disabled="true" title="Stock details" data-toggle="tooltip">
+                                            <span class="glyphicon glyphicon-chevron-right"></span>
+                                        </button>
+
+                                    </div>
+
+                                </div>
+							</div>
+							<div class="panel-body">
+								<div class="table-responsive">
+									<table class="table table-striped" id="fav_table">
+										<tr>
+											<th>Symbol</th>
+											<th>Company Name</th>
+											<th>Stock Price</th>
+											<th>Change(Change Percent)</th>
+											<th>Market Cap</th>
+											<th></th>
+										</tr>
+									</table>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="item">
+				<div id="stock_details">
+					<div class="panel panel-default">
+						<div class="panel-heading">
+                            <div>
+                                <button class="left btn btn-default" href="#testCarousel" role="button" data-slide="prev" style="display: inline-block;">
+                                    <span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>
+                                </button>
+                                <div style="width: 90%; display: inline-block">
+                                    <h4 style="text-align: center;">Stock Details</h4>
+                                </div>
+                            </div>
+
+						</div>
+						<div class="panel-body">
+							<div>
+								<ul class="nav nav-pills" role="tablist">
+                                    <li role="presentation" class="active"><a href="#current_stock" aira-controls="current_stock" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-dashboard"></span> <span class="hidden-xs not-visible">Current </span>Stock</a></li>
+                                    <li role="presentation"><a href="#his_charts" id="hightab" aria-controls="his_charts" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-stats"></span> <span class="hidden-xs not-visible">Historical </span>Charts</a></li>
+                                    <li role="presentation"><a href="#news_feeds" aria-controls="news_feeds" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-link"></span> News<span class="hidden-xs not-visible"> Feeds</span></a></li>
+								</ul>
+								<hr>
+							</div>
+							
+							<div class="tab-content">
+								<div role="tabpanel" class="tab-pane fade in active" id="current_stock">
+									<div class="row">
+										<div id="left_side" class="col-sm-6">
+                                            <p>Stock Details</p>
+<!--											<div class="table-responsive">-->
+												<table id="stock_table" class="table table-striped"></table>
+												
+<!--											</div>-->
+										</div>
+										<div id="right_side" class="col-sm-6">
+											<div>
+                                                <div style="display: inline-block; float: right; height: 30px;">
+                                                    <img src="fb_log.png" id="share" style="cursor: pointer; height: 100%;">
+                                                    <button class="btn btn-default" role="button" id="star" style="height: 100%">
+                                                        <span id="star-icon" class="glyphicon glyphicon-star-empty" aria-hidden="true"></span>
+                                                    </button>
+                                                </div>
+												<img id="daily_chart" src="" alt="Stock Daily Chart" style="width:100%;">
+											</div>
+										</div>
+									</div>
+
+								</div>
+								<div role="tabpanel" class="tab-pane fade" id="his_charts">
+									<div id="history"></div>
+								</div>
+								<div role="tabpanel" class="tab-pane fade" id="news_feeds">
+									<div id="news_list"></div>
+								</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+</body>
+</html>
